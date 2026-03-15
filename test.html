@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driven by Plants – testi</title>
+  <style>
+/* ================================================================
+   DRIVEN BY PLANTS — app.css
+   ================================================================ */
+
+:root {
+  --dbp-green-900: #1b4332;
+  --dbp-green-700: #2d6a4f;
+  --dbp-green-500: #52b788;
+  --dbp-green-300: #95d5b2;
+  --dbp-green-100: #d8f3dc;
+  --dbp-green-50:  #f0faf4;
+  --dbp-amber:     #e9c46a;
+  --dbp-amber-dark:#a07800;
+  --dbp-red:       #e63946;
+  --dbp-gray-900:  #1b1b1e;
+  --dbp-gray-600:  #4a4a5a;
+  --dbp-gray-300:  #b0b0bc;
+  --dbp-gray-100:  #f2f2f5;
+  --dbp-white:     #ffffff;
+  --dbp-radius:    14px;
+  --dbp-shadow:    0 2px 16px rgba(0,0,0,0.07);
+}
+
+/* ── BASE ───────────────────────────────────────────────────────── */
+body { background: #f4f6f4; margin: 0; padding: 0; }
+
+.dbp-app {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  color: var(--dbp-gray-900);
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 12px 48px;
+  box-sizing: border-box;
+}
+.dbp-app *, .dbp-app *::before, .dbp-app *::after {
+  box-sizing: inherit;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+.dbp-header {
+  background: linear-gradient(135deg, var(--dbp-green-900) 0%, var(--dbp-green-700) 100%);
+  border-radius: var(--dbp-radius);
+  padding: 28px 28px 26px;
+  margin: 20px 0 24px;
+  color: #fff;
+}
+.dbp-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+  letter-spacing: -0.3px;
+  color: #fff;
+}
+.dbp-subtitle {
+  font-size: 0.95rem;
+  margin: 0;
+  opacity: 0.82;
+  line-height: 1.5;
+}
+
+/* ── SEARCH ─────────────────────────────────────────────────────── */
+.dbp-search-section {
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 50;
+}
+.dbp-search-wrap { position: relative; }
+.dbp-search-box {
+  display: flex;
+  align-items: center;
+  background: var(--dbp-white);
+  border: 2px solid var(--dbp-green-300);
+  border-radius: 50px;
+  padding: 11px 18px;
+  box-shadow: var(--dbp-shadow);
+  transition: border-color 0.2s;
+}
+.dbp-search-box:focus-within {
+  border-color: var(--dbp-green-500);
+  box-shadow: 0 2px 20px rgba(82,183,136,0.18);
+}
+.dbp-search-icon { margin-right: 10px; font-size: 1rem; opacity: 0.5; flex-shrink: 0; }
+.dbp-search-input {
+  flex: 1; border: none; outline: none;
+  font-size: 0.95rem; background: transparent; color: var(--dbp-gray-900); min-width: 0;
+}
+.dbp-search-input::placeholder { color: var(--dbp-gray-300); }
+.dbp-search-clear {
+  background: none; border: none; cursor: pointer;
+  color: var(--dbp-gray-300); font-size: 0.9rem; padding: 2px 4px; flex-shrink: 0;
+  transition: color 0.15s;
+}
+.dbp-search-clear:hover { color: var(--dbp-gray-600); }
+.dbp-search-results {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  background: var(--dbp-white); border: 1px solid var(--dbp-green-100);
+  border-radius: var(--dbp-radius); box-shadow: 0 8px 28px rgba(0,0,0,0.13);
+  max-height: 340px; overflow-y: auto;
+}
+.dbp-search-result-item {
+  padding: 11px 18px; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--dbp-green-50); transition: background 0.12s;
+}
+.dbp-search-result-item:hover,
+.dbp-search-result-item:focus { background: var(--dbp-green-50); outline: none; }
+.dbp-search-result-item:last-child { border-bottom: none; }
+.dbp-search-result-name { font-weight: 500; font-size: 0.9rem; }
+.dbp-search-result-type {
+  font-size: 0.75rem; color: var(--dbp-gray-600); background: var(--dbp-gray-100);
+  padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+}
+.dbp-search-loading, .dbp-search-no-results, .dbp-search-error {
+  padding: 20px; text-align: center; color: var(--dbp-gray-600); font-size: 0.9rem;
+}
+.dbp-search-error { color: var(--dbp-red); }
+
+/* ── MAIN LAYOUT ────────────────────────────────────────────────── */
+.dbp-main { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 760px) { .dbp-main { grid-template-columns: 1fr; } }
+
+/* ── PANELS ─────────────────────────────────────────────────────── */
+.dbp-panel { background: var(--dbp-white); border-radius: var(--dbp-radius); box-shadow: var(--dbp-shadow); overflow: hidden; }
+.dbp-panel__header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 18px; border-bottom: 1px solid var(--dbp-green-50);
+}
+.dbp-panel__header h3 {
+  margin: 0; font-size: 0.9rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--dbp-green-700);
+}
+
+/* ── MEAL LIST ──────────────────────────────────────────────────── */
+.dbp-meal-empty, .dbp-analysis-empty { padding: 36px 20px; text-align: center; color: var(--dbp-gray-600); }
+.dbp-meal-empty__icon, .dbp-analysis-empty__icon { font-size: 2.2rem; display: block; margin-bottom: 10px; }
+.dbp-meal-empty p, .dbp-analysis-empty p { margin: 0; line-height: 1.6; font-size: 0.875rem; }
+.dbp-meal-item {
+  display: flex; align-items: center; padding: 10px 18px;
+  border-bottom: 1px solid var(--dbp-green-50); gap: 8px;
+}
+.dbp-meal-item:last-child { border-bottom: none; }
+.dbp-meal-item__name {
+  flex: 1; font-size: 0.875rem; font-weight: 500; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dbp-gram-input {
+  width: 58px; border: 1px solid var(--dbp-green-300); border-radius: 6px;
+  padding: 4px 6px; font-size: 0.85rem; text-align: center; color: var(--dbp-gray-900);
+  transition: border-color 0.15s;
+}
+.dbp-gram-input:focus { outline: none; border-color: var(--dbp-green-500); }
+.dbp-meal-item__unit { font-size: 0.8rem; color: var(--dbp-gray-600); flex-shrink: 0; }
+.dbp-meal-item__remove {
+  background: none; border: none; cursor: pointer; color: var(--dbp-gray-300);
+  font-size: 0.95rem; padding: 2px; line-height: 1; flex-shrink: 0; transition: color 0.15s;
+}
+.dbp-meal-item__remove:hover { color: var(--dbp-red); }
+
+.dbp-add-form {
+  display: flex; align-items: center; gap: 8px; padding: 10px 18px;
+  background: var(--dbp-green-50); border-top: 1px solid var(--dbp-green-100); flex-wrap: wrap;
+}
+.dbp-add-form__name { flex: 1; font-size: 0.875rem; font-weight: 500; min-width: 100px; color: var(--dbp-green-900); }
+.dbp-add-form input[type="number"] {
+  width: 62px; border: 1px solid var(--dbp-green-300); border-radius: 6px;
+  padding: 5px 7px; font-size: 0.875rem; text-align: center;
+}
+.dbp-add-form input[type="number"]:focus { outline: none; border-color: var(--dbp-green-500); }
+.dbp-add-form__unit { font-size: 0.8rem; color: var(--dbp-gray-600); }
+
+/* ── BUTTONS ────────────────────────────────────────────────────── */
+.dbp-btn {
+  display: inline-flex; align-items: center; padding: 7px 14px;
+  border-radius: 20px; font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; border: none; line-height: 1.2; transition: all 0.18s; white-space: nowrap;
+}
+.dbp-btn--ghost { background: transparent; border: 1px solid var(--dbp-gray-300); color: var(--dbp-gray-600); }
+.dbp-btn--ghost:hover { border-color: var(--dbp-red); color: var(--dbp-red); }
+.dbp-btn--primary { background: var(--dbp-green-700); color: #fff; }
+.dbp-btn--primary:hover { background: var(--dbp-green-900); }
+.dbp-btn--cancel { background: transparent; border: 1px solid var(--dbp-gray-300); color: var(--dbp-gray-600); }
+.dbp-btn--cancel:hover { background: var(--dbp-gray-100); }
+
+/* ── ANALYSIS ───────────────────────────────────────────────────── */
+.dbp-analysis-content { padding: 0 0 8px; }
+.dbp-section { padding: 16px 20px; border-bottom: 1px solid var(--dbp-green-50); }
+.dbp-section:last-child { border-bottom: none; }
+.dbp-section__title {
+  font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--dbp-green-700); margin: 0 0 4px;
+}
+.dbp-section__note { font-size: 0.73rem; color: var(--dbp-gray-600); margin: 0 0 12px; }
+
+.dbp-macros-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+@media (max-width: 600px) { .dbp-macros-grid { grid-template-columns: repeat(3, 1fr); } }
+.dbp-macro-card { background: var(--dbp-green-50); border-radius: 10px; padding: 10px 8px; text-align: center; }
+.dbp-macro-card__value { font-size: 1.3rem; font-weight: 700; color: var(--dbp-green-700); line-height: 1.1; }
+.dbp-macro-card__unit { font-size: 0.65rem; color: var(--dbp-green-700); opacity: 0.75; }
+.dbp-macro-card__label { font-size: 0.7rem; color: var(--dbp-gray-600); margin-top: 4px; line-height: 1.2; }
+
+.dbp-nutrient-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.dbp-nutrient-row:last-child { margin-bottom: 0; }
+.dbp-nutrient-label { width: 118px; font-size: 0.82rem; flex-shrink: 0; cursor: default; }
+.dbp-nutrient-bar-wrap { flex: 1; background: var(--dbp-gray-100); border-radius: 4px; height: 8px; overflow: hidden; min-width: 0; }
+.dbp-nutrient-bar { height: 100%; border-radius: 4px; transition: width 0.45s ease; }
+.dbp-nutrient-bar--good { background: var(--dbp-green-500); }
+.dbp-nutrient-bar--ok   { background: var(--dbp-amber); }
+.dbp-nutrient-bar--low  { background: var(--dbp-red); }
+.dbp-nutrient-pct { width: 38px; text-align: right; font-size: 0.78rem; font-weight: 700; flex-shrink: 0; }
+.dbp-nutrient-pct--good { color: var(--dbp-green-700); }
+.dbp-nutrient-pct--ok   { color: var(--dbp-amber-dark); }
+.dbp-nutrient-pct--low  { color: var(--dbp-red); }
+.dbp-nutrient-value { width: 72px; text-align: right; font-size: 0.72rem; color: var(--dbp-gray-600); flex-shrink: 0; }
+
+.dbp-amino-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .dbp-amino-grid { grid-template-columns: 1fr; } }
+.dbp-amino-item { display: flex; flex-direction: column; gap: 4px; }
+.dbp-amino-item__header { display: flex; justify-content: space-between; align-items: baseline; }
+.dbp-amino-item__name { font-size: 0.8rem; font-weight: 500; }
+.dbp-amino-item__pct { font-size: 0.75rem; font-weight: 700; }
+.dbp-amino-item--good .dbp-amino-item__pct { color: var(--dbp-green-700); }
+.dbp-amino-item--ok   .dbp-amino-item__pct { color: var(--dbp-amber-dark); }
+.dbp-amino-item--low  .dbp-amino-item__pct { color: var(--dbp-red); }
+.dbp-amino-item__bar { height: 5px; background: var(--dbp-gray-100); border-radius: 3px; overflow: hidden; }
+.dbp-amino-item__fill { height: 100%; border-radius: 3px; transition: width 0.45s ease; }
+.dbp-amino-item--good .dbp-amino-item__fill { background: var(--dbp-green-500); }
+.dbp-amino-item--ok   .dbp-amino-item__fill { background: var(--dbp-amber); }
+.dbp-amino-item--low  .dbp-amino-item__fill { background: var(--dbp-red); }
+.dbp-amino-nodata { color: var(--dbp-gray-600); font-size: 0.85rem; font-style: italic; margin: 0; }
+
+.dbp-recommendations { background: #fffdf0; border-top: 2px solid var(--dbp-amber) !important; }
+.dbp-rec-item { display: flex; gap: 10px; margin-bottom: 9px; align-items: flex-start; }
+.dbp-rec-item:last-child { margin-bottom: 0; }
+.dbp-rec-gap {
+  font-size: 0.75rem; font-weight: 700; color: var(--dbp-red);
+  background: #fce8e8; padding: 2px 8px; border-radius: 12px; white-space: nowrap; flex-shrink: 0; margin-top: 1px;
+}
+.dbp-rec-text { font-size: 0.82rem; color: var(--dbp-gray-600); line-height: 1.45; }
+
+.dbp-footer-note { text-align: center; padding: 18px 0 0; font-size: 0.72rem; color: var(--dbp-gray-600); line-height: 1.5; }
+.dbp-footer-note a { color: var(--dbp-green-700); text-decoration: none; }
+.dbp-footer-note a:hover { text-decoration: underline; }
+
+.dbp-spinner {
+  display: inline-block; width: 15px; height: 15px;
+  border: 2px solid var(--dbp-green-100); border-top-color: var(--dbp-green-500);
+  border-radius: 50%; animation: dbp-spin 0.65s linear infinite;
+  vertical-align: middle; margin-right: 6px;
+}
+@keyframes dbp-spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div id="dbp-app" class="dbp-app">
+
+  <!-- HEADER -->
+  <div class="dbp-header">
+    <h2 class="dbp-title">Driven by Plants</h2>
+    <p class="dbp-subtitle">Ravinto-opas – tutki ruoka-aineiden ravintoarvoja ja analysoi aterioitasi</p>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="dbp-search-section">
+    <div class="dbp-search-wrap">
+      <div class="dbp-search-box">
+        <span class="dbp-search-icon">&#128269;</span>
+        <input
+          type="text"
+          id="dbp-search-input"
+          class="dbp-search-input"
+          placeholder="Hae ruoka-ainetta, esim. linssit, tofu, pinaatti, kaura..."
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="dbp-search-clear" class="dbp-search-clear" style="display:none" aria-label="Tyhjennä haku">&#10005;</button>
+      </div>
+      <div id="dbp-search-results" class="dbp-search-results" role="listbox" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="dbp-main">
+
+    <!-- LEFT: MEAL BUILDER -->
+    <div class="dbp-panel dbp-panel--meal">
+      <div class="dbp-panel__header">
+        <h3>Ateria</h3>
+        <button id="dbp-clear-meal" class="dbp-btn dbp-btn--ghost" style="display:none">Tyhjennä</button>
+      </div>
+      <div id="dbp-meal-list" class="dbp-meal-list">
+        <div class="dbp-meal-empty">
+          <span class="dbp-meal-empty__icon">&#127821;</span>
+          <p>Hae ja lisää ruoka-aineita<br>aterialle yllä olevalla haulla</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: ANALYSIS -->
+    <div class="dbp-panel dbp-panel--analysis">
+      <div id="dbp-analysis-empty" class="dbp-analysis-empty">
+        <span class="dbp-analysis-empty__icon">&#128202;</span>
+        <p>Lisää ruoka-aineita aterialle<br>nähdäksesi ravintoaineanalyysin</p>
+      </div>
+      <div id="dbp-analysis-content" class="dbp-analysis-content" style="display:none">
+
+        <div class="dbp-section">
+          <h4 class="dbp-section__title">Makroravintoaineet</h4>
+          <div id="dbp-macros" class="dbp-macros-grid"></div>
+        </div>
+
+        <div class="dbp-section">
+          <h4 class="dbp-section__title">Tärkeimmät ravintoaineet</h4>
+          <p class="dbp-section__note">Osuus päivittäisestä viitearvosta (EFSA AI, aikuinen)</p>
+          <div id="dbp-key-nutrients" class="dbp-nutrient-list"></div>
+        </div>
+
+        <div class="dbp-section">
+          <h4 class="dbp-section__title">Välttämättömät aminohapot</h4>
+          <p class="dbp-section__note">Osuus WHO:n viitearvosta per proteiinigramma</p>
+          <div id="dbp-amino-acids" class="dbp-amino-grid"></div>
+        </div>
+
+        <div id="dbp-recommendations" class="dbp-section dbp-recommendations" style="display:none">
+          <h4 class="dbp-section__title">&#128161; Suositukset</h4>
+          <div id="dbp-recommendations-content"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="dbp-footer-note">
+    <p>
+      Tiedot: <a href="https://fineli.fi" target="_blank" rel="noopener">Fineli – Kansallinen elintarvikekoostumus&shy;tietokanta</a> (Ruokavirasto) &amp;
+      <a href="https://fdc.nal.usda.gov" target="_blank" rel="noopener">USDA FoodData Central</a>.
+      Arvot per 100&nbsp;g tai aterian mukaan skaalattuina.
+      Ei korvaa ravitsemusterapeutin neuvoja.
+    </p>
+  </div>
+
+</div>
+
+<script>
+var DBP_CONFIG = { usdaKey: 'Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS' };
+</script>
+<script>
+/* ================================================================
+   DRIVEN BY PLANTS — app.js  v0.1.0
+   ================================================================ */
+
+(function () {
+  'use strict';
+
+  const FINELI  = 'https://fineli.fi/fineli/api/v1';
+  const USDA    = 'https://api.nal.usda.gov/fdc/v1';
+  const USDA_KEY = (typeof DBP_CONFIG !== 'undefined') ? DBP_CONFIG.usdaKey : '';
+
+  const MACROS = [
+    { code: 'ENERC',  label: 'Energia',        unit: 'kcal', decimals: 0 },
+    { code: 'PROT',   label: 'Proteiini',       unit: 'g',    decimals: 1 },
+    { code: 'FAT',    label: 'Rasva',           unit: 'g',    decimals: 1 },
+    { code: 'CHOAVL', label: 'Hiilihydraatit',  unit: 'g',    decimals: 1 },
+    { code: 'FIBT',   label: 'Kuitu',           unit: 'g',    decimals: 1 },
+  ];
+
+  const KEY_NUTRIENTS = [
+    { code: 'VITB12', label: 'B12-vitamiini', unit: 'µg',  rda: 2.4,  note: 'Lähes kokonaan puuttuu kasvikunnasta' },
+    { code: 'FE',     label: 'Rauta',         unit: 'mg',  rda: 16,   note: 'Kasviperäinen rauta imeytyy heikommin kuin hemirauta' },
+    { code: 'CA',     label: 'Kalsium',       unit: 'mg',  rda: 800,  note: null },
+    { code: 'VITD',   label: 'D-vitamiini',   unit: 'µg',  rda: 10,   note: 'Ruoasta saatava D-vitamiini usein vähäistä' },
+    { code: 'ZN',     label: 'Sinkki',        unit: 'mg',  rda: 9.4,  note: null },
+    { code: 'FAPUN3', label: 'Omega-3',       unit: 'g',   rda: 1.6,  note: 'ALA – kasviperäinen omega-3' },
+    { code: 'IDD',    label: 'Jodi',          unit: 'µg',  rda: 150,  note: 'Vähäistä useimmissa kasviksissa' },
+    { code: 'SE',     label: 'Seleeni',       unit: 'µg',  rda: 55,   note: null },
+  ];
+
+  const AMINO_ACIDS = [
+    { code: 'HISTN', label: 'Histidiini',   who: 18 },
+    { code: 'ILE',   label: 'Isoleusiini',  who: 25 },
+    { code: 'LEU',   label: 'Leusiini',     who: 55 },
+    { code: 'LYS',   label: 'Lysiini',      who: 51 },
+    { code: 'MET',   label: 'Met + Kys',    who: 25, extra: ['CYS'] },
+    { code: 'PHE',   label: 'Fen + Tyr',    who: 47, extra: ['TYR'] },
+    { code: 'THR',   label: 'Treoniini',    who: 27 },
+    { code: 'TRP',   label: 'Tryptofaani',  who: 7  },
+    { code: 'VAL',   label: 'Valiini',      who: 32 },
+  ];
+
+  const SUGGESTIONS = {
+    VITB12: 'Ravintohiiva (B12-väkevöity), väkevöidyt kasvijuomat — tai B12-lisäravinne',
+    FE:     'Linssit, tofu, kikherneet, quinoa, kurpitsansiemenet, tumma suklaa',
+    CA:     'Lehtikaali, parsakaali, tahini, väkevöidyt kasvijuomat, edamame',
+    VITD:   'UV-altistetut sienet — D-vitamiinilisä on suositeltava erityisesti talviaikana',
+    ZN:     'Hampunsiemenet, kurpitsansiemenet, cashewpähkinät, kikherneet, kaurahiutaleet',
+    FAPUN3: 'Pellavansiemenet (jauhettu), chiansiemenet, saksanpähkinät, hampunsiemenet',
+    IDD:    'Nori-merilevä, wakame — tai jodisoitu suola',
+    SE:     'Parapähkinät (1–2 kpl/vrk riittää!), auringonkukansiemenet, cashewpähkinät',
+    LYS:    'Linssit, kikherneet, tofu, tempeh, edamame — lysiinin paras kasvipohjainen lähde',
+    MET:    'Auringonkukansiemenet, seesaminsiemenet, parapähkinät, kaurahiutaleet',
+    TRP:    'Kurpitsansiemenet, tofu, kaura, auringonkukansiemenet, täysjyvävehnä',
+    ILE:    'Tofu, linssit, hampunsiemenet, auringonkukansiemenet, quinoa',
+    LEU:    'Soijapavut, tofu, linssit, hampunsiemenet, kaura',
+    THR:    'Linssit, soijapavut, kikherneet, pähkinät, täysjyväviljat',
+    VAL:    'Soijapavut, linssit, pähkinät, siemenet, täysjyväviljat',
+    HISTN:  'Soijapavut, linssit, kikherneet, kvinoa, pähkinät',
+    PHE:    'Soijapavut, linssit, mantelit, maapähkinät, auringonkukansiemenet',
+  };
+
+  const state = {
+    mealItems:   [],
+    pendingFood: null,
+    searchTimer: null,
+    uidCounter:  0,
+  };
+
+  const $ = id => document.getElementById(id);
+
+  function fmt(val, decimals) {
+    if (val === null || val === undefined || isNaN(val)) return '–';
+    return decimals === 0 ? Math.round(val).toString() : val.toFixed(decimals);
+  }
+
+  function pctClass(pct) {
+    if (pct >= 75) return 'good';
+    if (pct >= 25) return 'ok';
+    return 'low';
+  }
+
+  async function fineliSearch(query) {
+    const url = `${FINELI}/foods?q=${encodeURIComponent(query)}&lang=fi&size=15`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  async function fineliFood(id) {
+    const url = `${FINELI}/foods/${id}?lang=fi`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  function extractNutrients(food) {
+    const map = {};
+    const list = food.componentValues || food.components || food.nutrients || [];
+    list.forEach(c => {
+      const code =
+        (c.eufdname && c.eufdname.toUpperCase()) ||
+        (c.id       && typeof c.id === 'string' && c.id.toUpperCase()) ||
+        (c.code     && c.code.toUpperCase()) ||
+        (c.nutrient && c.nutrient.eufdname && c.nutrient.eufdname.toUpperCase());
+      const val = parseFloat(c.bestloc ?? c.value ?? c.amount ?? 0) || 0;
+      if (code) map[code] = val;
+    });
+    return map;
+  }
+
+  function scale(rawNutrients, grams) {
+    const out = {};
+    for (const [k, v] of Object.entries(rawNutrients)) out[k] = v * grams / 100;
+    return out;
+  }
+
+  function sumMeal() {
+    const total = {};
+    state.mealItems.forEach(item => {
+      const s = scale(item.rawNutrients, item.grams);
+      for (const [k, v] of Object.entries(s)) total[k] = (total[k] || 0) + v;
+    });
+    return total;
+  }
+
+  function analyseAmino(totals) {
+    const protein = totals['PROT'] || 0;
+    if (protein < 1) return null;
+    return AMINO_ACIDS.map(aa => {
+      let mg = totals[aa.code] || 0;
+      if (aa.extra) aa.extra.forEach(c => { mg += totals[c] || 0; });
+      const mgPerG = protein > 0 ? mg / protein : 0;
+      const pct    = aa.who > 0 ? Math.round((mgPerG / aa.who) * 100) : 0;
+      return { ...aa, mg: Math.round(mg * 10) / 10, mgPerG: Math.round(mgPerG * 10) / 10, pct };
+    });
+  }
+
+  function buildRecs(totals, aminoScores) {
+    const recs = [];
+    KEY_NUTRIENTS.forEach(n => {
+      const val = totals[n.code] || 0;
+      const pct = n.rda > 0 ? (val / n.rda) * 100 : 100;
+      if (pct < 30 && SUGGESTIONS[n.code]) recs.push({ gap: n.label, text: SUGGESTIONS[n.code] });
+    });
+    if (aminoScores) {
+      aminoScores.forEach(aa => {
+        if (aa.pct < 75 && SUGGESTIONS[aa.code]) recs.push({ gap: aa.label, text: SUGGESTIONS[aa.code] });
+      });
+    }
+    return recs;
+  }
+
+  function renderMealList() {
+    const list = $('dbp-meal-list');
+    const clearBtn = $('dbp-clear-meal');
+    if (state.mealItems.length === 0) {
+      list.innerHTML = `<div class="dbp-meal-empty"><span class="dbp-meal-empty__icon">&#127821;</span><p>Hae ja lisää ruoka-aineita<br>aterialle yllä olevalla haulla</p></div>`;
+      clearBtn.style.display = 'none';
+      return;
+    }
+    clearBtn.style.display = '';
+    list.innerHTML = state.mealItems.map((item, idx) => `
+      <div class="dbp-meal-item" data-uid="${item.uid}">
+        <span class="dbp-meal-item__name" title="${item.name}">${item.name}</span>
+        <input type="number" class="dbp-gram-input" value="${item.grams}" min="1" max="5000" data-idx="${idx}" aria-label="Määrä grammoina">
+        <span class="dbp-meal-item__unit">g</span>
+        <button class="dbp-meal-item__remove" data-idx="${idx}" aria-label="Poista">&#10005;</button>
+      </div>`).join('');
+  }
+
+  function renderAnalysis() {
+    const emptyEl   = $('dbp-analysis-empty');
+    const contentEl = $('dbp-analysis-content');
+    if (state.mealItems.length === 0) {
+      emptyEl.style.display = ''; contentEl.style.display = 'none'; return;
+    }
+    emptyEl.style.display = 'none'; contentEl.style.display = '';
+    const totals = sumMeal();
+
+    $('dbp-macros').innerHTML = MACROS.map(m => {
+      const val = totals[m.code] || 0;
+      return `<div class="dbp-macro-card">
+        <div class="dbp-macro-card__value">${fmt(val, m.decimals)}<span class="dbp-macro-card__unit">&nbsp;${m.unit}</span></div>
+        <div class="dbp-macro-card__label">${m.label}</div>
+      </div>`;
+    }).join('');
+
+    $('dbp-key-nutrients').innerHTML = KEY_NUTRIENTS.map(n => {
+      const val    = totals[n.code] || 0;
+      const rawPct = n.rda > 0 ? (val / n.rda) * 100 : 0;
+      const barW   = Math.min(rawPct, 100);
+      const cls    = pctClass(rawPct);
+      const dispVal = val < 10 ? val.toFixed(1) : Math.round(val);
+      const noteAttr = n.note ? ` title="${n.note}"` : '';
+      const noteIcon = n.note ? ' <sup style="font-size:0.6rem;opacity:0.6">ℹ</sup>' : '';
+      return `<div class="dbp-nutrient-row">
+        <span class="dbp-nutrient-label"${noteAttr}>${n.label}${noteIcon}</span>
+        <div class="dbp-nutrient-bar-wrap"><div class="dbp-nutrient-bar dbp-nutrient-bar--${cls}" style="width:${barW}%"></div></div>
+        <span class="dbp-nutrient-pct dbp-nutrient-pct--${cls}">${Math.round(rawPct)}&nbsp;%</span>
+        <span class="dbp-nutrient-value">${dispVal}&nbsp;${n.unit}</span>
+      </div>`;
+    }).join('');
+
+    const aminoScores = analyseAmino(totals);
+    const aminoEl = $('dbp-amino-acids');
+    if (!aminoScores) {
+      aminoEl.innerHTML = '<p class="dbp-amino-nodata">Lisää proteiinipitoisia ruokia (väh. 1 g proteiinia) aminohappoanalyysiä varten.</p>';
+    } else {
+      aminoEl.innerHTML = aminoScores.map(aa => {
+        const cls = pctClass(aa.pct);
+        return `<div class="dbp-amino-item dbp-amino-item--${cls}">
+          <div class="dbp-amino-item__header">
+            <span class="dbp-amino-item__name">${aa.label}</span>
+            <span class="dbp-amino-item__pct">${aa.pct}&nbsp;%</span>
+          </div>
+          <div class="dbp-amino-item__bar"><div class="dbp-amino-item__fill" style="width:${Math.min(aa.pct,100)}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+
+    const recs    = buildRecs(totals, aminoScores);
+    const recsEl  = $('dbp-recommendations');
+    const recsCnt = $('dbp-recommendations-content');
+    if (recs.length > 0) {
+      recsEl.style.display = '';
+      recsCnt.innerHTML = recs.map(r => `
+        <div class="dbp-rec-item">
+          <span class="dbp-rec-gap">&#8595;&nbsp;${r.gap}</span>
+          <span class="dbp-rec-text">${r.text}</span>
+        </div>`).join('');
+    } else {
+      recsEl.style.display = 'none';
+    }
+  }
+
+  function showResults(html) {
+    const el = $('dbp-search-results');
+    el.innerHTML = html; el.style.display = '';
+  }
+  function hideResults() { $('dbp-search-results').style.display = 'none'; }
+
+  function renderSearchResults(items) {
+    if (!items || items.length === 0) {
+      showResults('<div class="dbp-search-no-results">Ei tuloksia. Kokeile eri hakusanaa.</div>'); return;
+    }
+    showResults(items.slice(0, 12).map(food => {
+      const name = food.name?.fi || food.name?.en || (typeof food.name === 'string' ? food.name : '?');
+      const type = food.foodClass?.nameFi || food.type?.nameFi || '';
+      return `<div class="dbp-search-result-item" role="option" tabindex="0"
+                   data-id="${food.id}" data-name="${name.replace(/"/g, '&quot;')}">
+        <span class="dbp-search-result-name">${name}</span>
+        ${type ? `<span class="dbp-search-result-type">${type}</span>` : ''}
+      </div>`;
+    }).join(''));
+  }
+
+  function showAddForm(foodObj) {
+    removeAddForm();
+    state.pendingFood = foodObj;
+    const form = document.createElement('div');
+    form.className = 'dbp-add-form'; form.id = 'dbp-add-form';
+    form.innerHTML = `
+      <span class="dbp-add-form__name">${foodObj.name}</span>
+      <input type="number" id="dbp-gram-new" value="100" min="1" max="5000" aria-label="Grammamäärä">
+      <span class="dbp-add-form__unit">g</span>
+      <button class="dbp-btn dbp-btn--primary" id="dbp-confirm-add">Lisää</button>
+      <button class="dbp-btn dbp-btn--cancel" id="dbp-cancel-add">Peru</button>`;
+    $('dbp-meal-list').appendChild(form);
+    const inp = $('dbp-gram-new'); inp.focus(); inp.select();
+  }
+
+  function removeAddForm() {
+    const f = $('dbp-add-form'); if (f) f.remove(); state.pendingFood = null;
+  }
+
+  function confirmAdd() {
+    if (!state.pendingFood) return;
+    const grams = parseInt($('dbp-gram-new').value, 10) || 100;
+    state.uidCounter++;
+    state.mealItems.push({ uid: state.uidCounter, name: state.pendingFood.name, grams, rawNutrients: state.pendingFood.rawNutrients });
+    removeAddForm(); renderMealList(); renderAnalysis();
+  }
+
+  async function selectFood(id, name) {
+    hideResults();
+    $('dbp-search-input').value = '';
+    $('dbp-search-clear').style.display = 'none';
+    removeAddForm();
+    const placeholder = document.createElement('div');
+    placeholder.id = 'dbp-add-form'; placeholder.className = 'dbp-add-form';
+    placeholder.innerHTML = `<span class="dbp-spinner"></span> Ladataan: ${name}`;
+    $('dbp-meal-list').appendChild(placeholder);
+    try {
+      const food = await fineliFood(id);
+      const rawNutrients = extractNutrients(food);
+      const foodName = food.name?.fi || food.name?.en || name;
+      placeholder.remove();
+      showAddForm({ id, name: foodName, rawNutrients });
+    } catch (err) {
+      placeholder.remove();
+      tryUsdaFallback(name);
+    }
+  }
+
+  async function tryUsdaFallback(query) {
+    if (!USDA_KEY) { alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.'); return; }
+    try {
+      const res  = await fetch(`${USDA}/foods/search?query=${encodeURIComponent(query)}&pageSize=1&api_key=${USDA_KEY}`);
+      const data = await res.json();
+      const food = data.foods?.[0];
+      if (!food) throw new Error('not found');
+      const rawNutrients = {};
+      (food.foodNutrients || []).forEach(n => {
+        const code = usdaCodeMap(n.nutrientId || n.nutrientNumber);
+        if (code) rawNutrients[code] = parseFloat(n.value) || 0;
+      });
+      showAddForm({ id: food.fdcId, name: food.description, rawNutrients });
+    } catch {
+      alert('Ruoka-ainetta ei löydy tällä hetkellä. Kokeile toista hakusanaa.');
+    }
+  }
+
+  function usdaCodeMap(id) {
+    const MAP = {
+      1008:'ENERC', 1003:'PROT', 1004:'FAT', 1005:'CHOAVL', 1079:'FIBT',
+      1087:'CA', 1089:'FE', 1114:'VITD', 1178:'VITB12', 1095:'ZN',
+      1100:'IDD', 1103:'SE', 1404:'FAPUN3',
+      1221:'HISTN', 1212:'ILE', 1213:'LEU', 1214:'LYS', 1215:'MET',
+      1216:'PHE', 1211:'THR', 1210:'TRP', 1217:'VAL', 1232:'CYS', 1219:'TYR',
+    };
+    return MAP[parseInt(id, 10)] || null;
+  }
+
+  function initEvents() {
+    const searchInput = $('dbp-search-input');
+    const clearBtn    = $('dbp-search-clear');
+    const resultsEl   = $('dbp-search-results');
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim();
+      clearBtn.style.display = q ? '' : 'none';
+      if (state.searchTimer) clearTimeout(state.searchTimer);
+      if (q.length < 2) { hideResults(); return; }
+      state.searchTimer = setTimeout(() => {
+        showResults('<div class="dbp-search-loading"><span class="dbp-spinner"></span>Haetaan&hellip;</div>');
+        fineliSearch(q).then(renderSearchResults).catch(() => {
+          showResults('<div class="dbp-search-error">Haku epäonnistui. Tarkista verkkoyhteytesi.</div>');
+        });
+      }, 320);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = ''; clearBtn.style.display = 'none'; hideResults(); searchInput.focus();
+    });
+
+    document.addEventListener('click', e => {
+      const resultItem = e.target.closest('.dbp-search-result-item');
+      if (resultItem) { selectFood(resultItem.dataset.id, resultItem.dataset.name); return; }
+      if (e.target.id === 'dbp-confirm-add') { confirmAdd(); return; }
+      if (e.target.id === 'dbp-cancel-add') { removeAddForm(); renderMealList(); return; }
+      const removeBtn = e.target.closest('.dbp-meal-item__remove');
+      if (removeBtn) {
+        state.mealItems.splice(parseInt(removeBtn.dataset.idx, 10), 1);
+        renderMealList(); renderAnalysis(); return;
+      }
+      if (!e.target.closest('#dbp-search-results') && !e.target.closest('#dbp-search-input')) hideResults();
+    });
+
+    document.addEventListener('change', e => {
+      const inp = e.target.closest('.dbp-gram-input');
+      if (!inp) return;
+      const grams = Math.max(1, parseInt(inp.value, 10) || 100);
+      inp.value = grams;
+      state.mealItems[parseInt(inp.dataset.idx, 10)].grams = grams;
+      renderAnalysis();
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.id === 'dbp-gram-new') { confirmAdd(); return; }
+      if (e.key === 'Escape') { removeAddForm(); renderMealList(); hideResults(); return; }
+      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && document.activeElement === searchInput) {
+        e.preventDefault();
+        const items = resultsEl.querySelectorAll('.dbp-search-result-item');
+        if (items.length) items[0].focus();
+      }
+      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && e.target.closest('#dbp-search-results')) {
+        e.preventDefault();
+        const items = [...resultsEl.querySelectorAll('.dbp-search-result-item')];
+        const next = items.indexOf(e.target) + (e.key === 'ArrowDown' ? 1 : -1);
+        if (items[next]) items[next].focus();
+      }
+      if (e.key === 'Enter' && e.target.closest('#dbp-search-results')) e.target.click();
+    });
+
+    $('dbp-clear-meal').addEventListener('click', () => {
+      if (!confirm('Tyhjennetäänkö koko ateria?')) return;
+      state.mealItems = []; removeAddForm(); renderMealList(); renderAnalysis();
+    });
+  }
+
+  function init() {
+    if (!$('dbp-app')) return;
+    renderMealList(); renderAnalysis(); initEvents();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
