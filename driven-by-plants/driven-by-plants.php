@@ -21,36 +21,75 @@ if ( ! defined( 'DBP_USDA_KEY' ) ) {
     define( 'DBP_USDA_KEY', 'Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS' );
 }
 
-// REST proxy: browser calls /wp-json/dbp/v1/usda?query=... → server calls USDA with the key.
+// REST proxies — all external API calls go server-side so no keys or
+// CORS issues ever reach the browser.
 add_action( 'rest_api_init', function () {
+
+    // Fineli: food search
+    register_rest_route( 'dbp/v1', '/fineli/search', [
+        'methods'             => 'GET',
+        'callback'            => 'dbp_fineli_search_proxy',
+        'permission_callback' => '__return_true',
+        'args'                => [
+            'q' => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
+        ],
+    ] );
+
+    // Fineli: single food detail
+    register_rest_route( 'dbp/v1', '/fineli/food/(?P<id>\d+)', [
+        'methods'             => 'GET',
+        'callback'            => 'dbp_fineli_food_proxy',
+        'permission_callback' => '__return_true',
+    ] );
+
+    // USDA: food search (key stays server-side)
     register_rest_route( 'dbp/v1', '/usda', [
         'methods'             => 'GET',
         'callback'            => 'dbp_usda_proxy',
         'permission_callback' => '__return_true',
         'args'                => [
-            'query' => [
-                'required'          => true,
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
+            'query' => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
         ],
     ] );
+
 } );
 
-function dbp_usda_proxy( WP_REST_Request $request ) {
-    $query = $request->get_param( 'query' );
-
+function dbp_fineli_search_proxy( WP_REST_Request $request ) {
     $url = add_query_arg( [
-        'query'    => $query,
-        'pageSize' => 1,
+        'q'    => $request->get_param( 'q' ),
+        'lang' => 'fi',
+        'size' => 15,
+    ], 'https://fineli.fi/fineli/api/v1/foods' );
+
+    $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
+    if ( is_wp_error( $response ) ) {
+        return new WP_Error( 'fineli_error', 'Fineli request failed', [ 'status' => 502 ] );
+    }
+    return rest_ensure_response( json_decode( wp_remote_retrieve_body( $response ) ) );
+}
+
+function dbp_fineli_food_proxy( WP_REST_Request $request ) {
+    $id  = absint( $request->get_param( 'id' ) );
+    $url = "https://fineli.fi/fineli/api/v1/foods/{$id}?lang=fi";
+
+    $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
+    if ( is_wp_error( $response ) ) {
+        return new WP_Error( 'fineli_error', 'Fineli request failed', [ 'status' => 502 ] );
+    }
+    return rest_ensure_response( json_decode( wp_remote_retrieve_body( $response ) ) );
+}
+
+function dbp_usda_proxy( WP_REST_Request $request ) {
+    $url = add_query_arg( [
+        'query'    => $request->get_param( 'query' ),
+        'pageSize' => 12,
         'api_key'  => DBP_USDA_KEY,
     ], 'https://api.nal.usda.gov/fdc/v1/foods/search' );
 
     $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
-
     if ( is_wp_error( $response ) ) {
         return new WP_Error( 'usda_error', 'USDA request failed', [ 'status' => 502 ] );
     }
-
     return rest_ensure_response( json_decode( wp_remote_retrieve_body( $response ) ) );
 }
 
@@ -68,9 +107,11 @@ function dbp_shortcode() {
         DBP_VERSION,
         true
     );
-    // Only the proxy URL is passed to the browser — no credentials.
+    // Only proxy URLs are passed to the browser — no credentials.
     wp_localize_script( 'dbp-app', 'DBP_CONFIG', [
-        'usdaProxy' => rest_url( 'dbp/v1/usda' ),
+        'fineliSearch' => rest_url( 'dbp/v1/fineli/search' ),
+        'fineliFood'   => rest_url( 'dbp/v1/fineli/food' ),
+        'usdaProxy'    => rest_url( 'dbp/v1/usda' ),
     ] );
 
     ob_start();

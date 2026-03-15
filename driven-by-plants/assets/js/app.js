@@ -7,8 +7,10 @@
   'use strict';
 
   /* ── CONFIG ───────────────────────────────────────────────────── */
-  const FINELI     = 'https://fineli.fi/fineli/api/v1';
-  const USDA_PROXY = (typeof DBP_CONFIG !== 'undefined') ? DBP_CONFIG.usdaProxy : null;
+  const CFG = (typeof DBP_CONFIG !== 'undefined') ? DBP_CONFIG : {};
+  const PROXY_FINELI_SEARCH = CFG.fineliSearch || null;
+  const PROXY_FINELI_FOOD   = CFG.fineliFood   || null;
+  const PROXY_USDA          = CFG.usdaProxy    || null;
 
   /* ── NUTRIENT DEFINITIONS ─────────────────────────────────────── */
 
@@ -98,19 +100,37 @@
     return 'low';
   }
 
-  /* ── FINELI API ───────────────────────────────────────────────── */
+  /* ── FINELI API (via WP proxy) ────────────────────────────────── */
   async function fineliSearch(query) {
-    const url = `${FINELI}/foods?q=${encodeURIComponent(query)}&lang=fi&size=15`;
+    if (!PROXY_FINELI_SEARCH) throw new Error('no proxy');
+    const url = `${PROXY_FINELI_SEARCH}?q=${encodeURIComponent(query)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
 
   async function fineliFood(id) {
-    const url = `${FINELI}/foods/${id}?lang=fi`;
+    if (!PROXY_FINELI_FOOD) throw new Error('no proxy');
+    const url = `${PROXY_FINELI_FOOD}/${id}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
+  }
+
+  /* ── USDA SEARCH (via WP proxy, used as fallback) ─────────────── */
+  async function usdaSearch(query) {
+    if (!PROXY_USDA) throw new Error('no proxy');
+    const url = `${PROXY_USDA}?query=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    // Normalise USDA results to the same shape as Fineli results
+    return (data.foods || []).map(f => ({
+      id:        `usda:${f.fdcId}`,
+      name:      { fi: f.description, en: f.description },
+      foodClass: { nameFi: f.dataType || '' },
+      _usda:     f,
+    }));
   }
 
   /* ── NUTRIENT EXTRACTION ──────────────────────────────────────── */
@@ -405,46 +425,73 @@
     $('dbp-search-input').value = '';
     $('dbp-search-clear').style.display = 'none';
 
-    // Show loading placeholder while fetching
     removeAddForm();
     const placeholder = document.createElement('div');
     placeholder.id = 'dbp-add-form';
     placeholder.className = 'dbp-add-form';
-    placeholder.innerHTML = `<span class="dbp-spinner"></span> Ladataan: ${name}`;
+    placeholder.innerHTML = `<span class="dbp-spinner"></span> Ladataan: ${escapeHtml(name)}`;
     $('dbp-meal-list').appendChild(placeholder);
 
+    // USDA items have id prefixed with "usda:"
+    if (String(id).startsWith('usda:')) {
+      const fdcId = String(id).replace('usda:', '');
+      try {
+        const rawNutrients = await fetchUsdaNutrients(fdcId);
+        placeholder.remove();
+        showAddForm({ id, name, rawNutrients });
+      } catch {
+        placeholder.remove();
+        alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.');
+      }
+      return;
+    }
+
     try {
-      const food      = await fineliFood(id);
+      const food         = await fineliFood(id);
       const rawNutrients = extractNutrients(food);
-      const foodName  = food.name?.fi || food.name?.en || name;
+      const foodName     = food.name?.fi || food.name?.en || name;
       placeholder.remove();
       showAddForm({ id, name: foodName, rawNutrients });
-    } catch (err) {
+    } catch {
       placeholder.remove();
-      // Fallback: try USDA
       tryUsdaFallback(name);
     }
   }
 
   /* ── USDA FALLBACK (via server-side proxy — key never reaches browser) ── */
+  /** Extract nutrients from a USDA foodNutrients array into our code map */
+  function extractUsdaNutrients(foodNutrients) {
+    const raw = {};
+    (foodNutrients || []).forEach(n => {
+      const code = usdaCodeMap(n.nutrientId || n.nutrientNumber);
+      if (code) raw[code] = parseFloat(n.value) || 0;
+    });
+    return raw;
+  }
+
+  /** Fetch nutrients for a known USDA fdcId via the proxy */
+  async function fetchUsdaNutrients(fdcId) {
+    // Re-use the search proxy with the fdcId as a very specific query;
+    // the first result will be the exact item.
+    const res  = await fetch(`${PROXY_USDA}?query=${encodeURIComponent(fdcId)}`);
+    const data = await res.json();
+    const food = data.foods?.[0];
+    if (!food) throw new Error('not found');
+    return extractUsdaNutrients(food.foodNutrients);
+  }
+
+  /** Fallback: when Fineli food detail fails, search USDA by name */
   async function tryUsdaFallback(query) {
-    if (!USDA_PROXY) {
+    if (!PROXY_USDA) {
       alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.');
       return;
     }
     try {
-      const res   = await fetch(`${USDA_PROXY}?query=${encodeURIComponent(query)}`);
-      const data  = await res.json();
-      const food  = data.foods?.[0];
+      const res  = await fetch(`${PROXY_USDA}?query=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      const food = data.foods?.[0];
       if (!food) throw new Error('not found');
-
-      const rawNutrients = {};
-      (food.foodNutrients || []).forEach(n => {
-        const code = usdaCodeMap(n.nutrientId || n.nutrientNumber);
-        if (code) rawNutrients[code] = parseFloat(n.value) || 0;
-      });
-
-      showAddForm({ id: food.fdcId, name: food.description, rawNutrients });
+      showAddForm({ id: `usda:${food.fdcId}`, name: food.description, rawNutrients: extractUsdaNutrients(food.foodNutrients) });
     } catch {
       alert('Ruoka-ainetta ei löydy tällä hetkellä. Kokeile toista hakusanaa.');
     }
@@ -500,9 +547,12 @@
         showResults('<div class="dbp-search-loading"><span class="dbp-spinner"></span>Haetaan&hellip;</div>');
         fineliSearch(q)
           .then(renderSearchResults)
-          .catch(() => {
-            showResults('<div class="dbp-search-error">Haku epäonnistui. Tarkista verkkoyhteytesi.</div>');
-          });
+          .catch(() => usdaSearch(q)
+            .then(renderSearchResults)
+            .catch(() => {
+              showResults('<div class="dbp-search-error">Haku epäonnistui. Tarkista verkkoyhteytesi.</div>');
+            })
+          );
       }, 320);
     });
 

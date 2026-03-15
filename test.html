@@ -353,14 +353,15 @@ body { background: #f4f6f4; margin: 0; padding: 0; }
 </div>
 
 <script>
-// LOCAL TESTING ONLY — in the real WordPress plugin the key is kept
-// server-side and the browser only receives a proxy URL.
+// LOCAL TESTING ONLY — API key is intentionally visible here for development.
+// In the real WordPress plugin all API calls are proxied server-side.
 // Do not deploy this file publicly.
-var DBP_CONFIG = { usdaProxy: null }; // USDA fallback disabled in local test
-
-// To enable USDA fallback in local testing, uncomment the line below
-// and replace with a temporary test key. Never commit a live key here.
-// var DBP_CONFIG = { usdaProxy: 'https://api.nal.usda.gov/fdc/v1/foods/search?api_key=YOUR_KEY_HERE&' };
+const _USDA = 'https://api.nal.usda.gov/fdc/v1/foods/search?api_key=Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS&query=';
+var DBP_CONFIG = {
+  fineliSearch: null,        // no server proxy in local test — falls back to USDA
+  fineliFood:   null,
+  usdaProxy:    _USDA,       // USDA called directly from browser for testing
+};
 </script>
 <script>
 /* ================================================================
@@ -370,8 +371,10 @@ var DBP_CONFIG = { usdaProxy: null }; // USDA fallback disabled in local test
 (function () {
   'use strict';
 
-  const FINELI     = 'https://fineli.fi/fineli/api/v1';
-  const USDA_PROXY = (typeof DBP_CONFIG !== 'undefined') ? DBP_CONFIG.usdaProxy : null;
+  const CFG = (typeof DBP_CONFIG !== 'undefined') ? DBP_CONFIG : {};
+  const PROXY_FINELI_SEARCH = CFG.fineliSearch || null;
+  const PROXY_FINELI_FOOD   = CFG.fineliFood   || null;
+  const PROXY_USDA          = CFG.usdaProxy    || null;
 
   const MACROS = [
     { code: 'ENERC',  label: 'Energia',        unit: 'kcal', decimals: 0 },
@@ -454,17 +457,39 @@ var DBP_CONFIG = { usdaProxy: null }; // USDA fallback disabled in local test
   }
 
   async function fineliSearch(query) {
-    const url = `${FINELI}/foods?q=${encodeURIComponent(query)}&lang=fi&size=15`;
-    const res = await fetch(url);
+    if (!PROXY_FINELI_SEARCH) throw new Error('no proxy');
+    const res = await fetch(`${PROXY_FINELI_SEARCH}?q=${encodeURIComponent(query)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
 
   async function fineliFood(id) {
-    const url = `${FINELI}/foods/${id}?lang=fi`;
-    const res = await fetch(url);
+    if (!PROXY_FINELI_FOOD) throw new Error('no proxy');
+    const res = await fetch(`${PROXY_FINELI_FOOD}/${id}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
+  }
+
+  async function usdaSearch(query) {
+    if (!PROXY_USDA) throw new Error('no proxy');
+    const res  = await fetch(`${PROXY_USDA}${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return (data.foods || []).map(f => ({
+      id:        `usda:${f.fdcId}`,
+      name:      { fi: f.description, en: f.description },
+      foodClass: { nameFi: f.dataType || '' },
+      _usda:     f,
+    }));
+  }
+
+  function extractUsdaNutrients(foodNutrients) {
+    const raw = {};
+    (foodNutrients || []).forEach(n => {
+      const code = usdaCodeMap(n.nutrientId || n.nutrientNumber);
+      if (code) raw[code] = parseFloat(n.value) || 0;
+    });
+    return raw;
   }
 
   function extractNutrients(food) {
@@ -662,33 +687,44 @@ var DBP_CONFIG = { usdaProxy: null }; // USDA fallback disabled in local test
     removeAddForm();
     const placeholder = document.createElement('div');
     placeholder.id = 'dbp-add-form'; placeholder.className = 'dbp-add-form';
-    placeholder.innerHTML = `<span class="dbp-spinner"></span> Ladataan: ${name}`;
+    placeholder.innerHTML = `<span class="dbp-spinner"></span> Ladataan: ${escapeHtml(name)}`;
     $('dbp-meal-list').appendChild(placeholder);
+
+    if (String(id).startsWith('usda:')) {
+      // Item came from USDA search — nutrients already in the search result
+      // Re-fetch by querying the id to get full nutrient detail
+      try {
+        const res  = await fetch(`${PROXY_USDA}${encodeURIComponent(String(id).replace('usda:',''))}`);
+        const data = await res.json();
+        const food = data.foods?.[0];
+        placeholder.remove();
+        showAddForm({ id, name, rawNutrients: extractUsdaNutrients(food?.foodNutrients) });
+      } catch {
+        placeholder.remove();
+        alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.');
+      }
+      return;
+    }
+
     try {
       const food = await fineliFood(id);
       const rawNutrients = extractNutrients(food);
-      const foodName = food.name?.fi || food.name?.en || name;
       placeholder.remove();
-      showAddForm({ id, name: foodName, rawNutrients });
-    } catch (err) {
+      showAddForm({ id, name: food.name?.fi || food.name?.en || name, rawNutrients });
+    } catch {
       placeholder.remove();
       tryUsdaFallback(name);
     }
   }
 
   async function tryUsdaFallback(query) {
-    if (!USDA_PROXY) { alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.'); return; }
+    if (!PROXY_USDA) { alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.'); return; }
     try {
-      const res  = await fetch(`${USDA_PROXY}?query=${encodeURIComponent(query)}`);
+      const res  = await fetch(`${PROXY_USDA}${encodeURIComponent(query)}`);
       const data = await res.json();
       const food = data.foods?.[0];
       if (!food) throw new Error('not found');
-      const rawNutrients = {};
-      (food.foodNutrients || []).forEach(n => {
-        const code = usdaCodeMap(n.nutrientId || n.nutrientNumber);
-        if (code) rawNutrients[code] = parseFloat(n.value) || 0;
-      });
-      showAddForm({ id: food.fdcId, name: food.description, rawNutrients });
+      showAddForm({ id: `usda:${food.fdcId}`, name: food.description, rawNutrients: extractUsdaNutrients(food.foodNutrients) });
     } catch {
       alert('Ruoka-ainetta ei löydy tällä hetkellä. Kokeile toista hakusanaa.');
     }
@@ -717,9 +753,14 @@ var DBP_CONFIG = { usdaProxy: null }; // USDA fallback disabled in local test
       if (q.length < 2) { hideResults(); return; }
       state.searchTimer = setTimeout(() => {
         showResults('<div class="dbp-search-loading"><span class="dbp-spinner"></span>Haetaan&hellip;</div>');
-        fineliSearch(q).then(renderSearchResults).catch(() => {
-          showResults('<div class="dbp-search-error">Haku epäonnistui. Tarkista verkkoyhteytesi.</div>');
-        });
+        fineliSearch(q)
+          .then(renderSearchResults)
+          .catch(() => usdaSearch(q)
+            .then(renderSearchResults)
+            .catch(() => {
+              showResults('<div class="dbp-search-error">Haku epäonnistui. Tarkista verkkoyhteytesi.</div>');
+            })
+          );
       }, 320);
     });
 
