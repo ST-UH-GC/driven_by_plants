@@ -78,6 +78,15 @@
   /* ── HELPERS ──────────────────────────────────────────────────── */
   const $ = id => document.getElementById(id);
 
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function fmt(val, decimals) {
     if (val === null || val === undefined || isNaN(val)) return '–';
     return decimals === 0 ? Math.round(val).toString() : val.toFixed(decimals);
@@ -338,9 +347,9 @@
       const name = food.name?.fi || food.name?.en || (typeof food.name === 'string' ? food.name : '?');
       const type = food.foodClass?.nameFi || food.type?.nameFi || '';
       return `<div class="dbp-search-result-item" role="option" tabindex="0"
-                   data-id="${food.id}" data-name="${name.replace(/"/g, '&quot;')}">
-        <span class="dbp-search-result-name">${name}</span>
-        ${type ? `<span class="dbp-search-result-type">${type}</span>` : ''}
+                   data-id="${escapeHtml(food.id)}" data-name="${escapeHtml(name)}">
+        <span class="dbp-search-result-name">${escapeHtml(name)}</span>
+        ${type ? `<span class="dbp-search-result-type">${escapeHtml(type)}</span>` : ''}
       </div>`;
     }).join('');
     showResults(html);
@@ -376,7 +385,7 @@
 
   function confirmAdd() {
     if (!state.pendingFood) return;
-    const grams = parseInt($('dbp-gram-new').value, 10) || 100;
+    const grams = Math.max(1, parseInt($('dbp-gram-new').value, 10) || 100);
     state.uidCounter++;
     state.mealItems.push({
       uid:          state.uidCounter,
