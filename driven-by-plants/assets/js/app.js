@@ -7,9 +7,8 @@
   'use strict';
 
   /* ── CONFIG ───────────────────────────────────────────────────── */
-  const FINELI  = 'https://fineli.fi/fineli/api/v1';
-  const USDA    = 'https://api.nal.usda.gov/fdc/v1';
-  const USDA_KEY = (typeof DBP_CONFIG !== 'undefined') ? DBP_CONFIG.usdaKey : '';
+  const FINELI     = 'https://fineli.fi/fineli/api/v1';
+  const USDA_PROXY = (typeof DBP_CONFIG !== 'undefined') ? DBP_CONFIG.usdaProxy : null;
 
   /* ── NUTRIENT DEFINITIONS ─────────────────────────────────────── */
 
@@ -418,14 +417,14 @@
     }
   }
 
-  /* ── USDA FALLBACK ────────────────────────────────────────────── */
+  /* ── USDA FALLBACK (via server-side proxy — key never reaches browser) ── */
   async function tryUsdaFallback(query) {
-    if (!USDA_KEY) {
+    if (!USDA_PROXY) {
       alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.');
       return;
     }
     try {
-      const res   = await fetch(`${USDA}/foods/search?query=${encodeURIComponent(query)}&pageSize=1&api_key=${USDA_KEY}`);
+      const res   = await fetch(`${USDA_PROXY}?query=${encodeURIComponent(query)}`);
       const data  = await res.json();
       const food  = data.foods?.[0];
       if (!food) throw new Error('not found');

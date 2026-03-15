@@ -14,6 +14,46 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 define( 'DBP_VERSION',    '0.1.0' );
 define( 'DBP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
+// USDA key stays server-side — never sent to the browser.
+// Define DBP_USDA_KEY in wp-config.php to override, e.g.:
+//   define( 'DBP_USDA_KEY', 'your-key-here' );
+if ( ! defined( 'DBP_USDA_KEY' ) ) {
+    define( 'DBP_USDA_KEY', 'Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS' );
+}
+
+// REST proxy: browser calls /wp-json/dbp/v1/usda?query=... → server calls USDA with the key.
+add_action( 'rest_api_init', function () {
+    register_rest_route( 'dbp/v1', '/usda', [
+        'methods'             => 'GET',
+        'callback'            => 'dbp_usda_proxy',
+        'permission_callback' => '__return_true',
+        'args'                => [
+            'query' => [
+                'required'          => true,
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+        ],
+    ] );
+} );
+
+function dbp_usda_proxy( WP_REST_Request $request ) {
+    $query = $request->get_param( 'query' );
+
+    $url = add_query_arg( [
+        'query'    => $query,
+        'pageSize' => 1,
+        'api_key'  => DBP_USDA_KEY,
+    ], 'https://api.nal.usda.gov/fdc/v1/foods/search' );
+
+    $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
+
+    if ( is_wp_error( $response ) ) {
+        return new WP_Error( 'usda_error', 'USDA request failed', [ 'status' => 502 ] );
+    }
+
+    return rest_ensure_response( json_decode( wp_remote_retrieve_body( $response ) ) );
+}
+
 function dbp_shortcode() {
     wp_enqueue_style(
         'dbp-style',
@@ -28,8 +68,9 @@ function dbp_shortcode() {
         DBP_VERSION,
         true
     );
+    // Only the proxy URL is passed to the browser — no credentials.
     wp_localize_script( 'dbp-app', 'DBP_CONFIG', [
-        'usdaKey' => 'Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS',
+        'usdaProxy' => rest_url( 'dbp/v1/usda' ),
     ] );
 
     ob_start();

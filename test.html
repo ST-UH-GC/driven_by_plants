@@ -353,7 +353,14 @@ body { background: #f4f6f4; margin: 0; padding: 0; }
 </div>
 
 <script>
-var DBP_CONFIG = { usdaKey: 'Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS' };
+// LOCAL TESTING ONLY — in the real WordPress plugin the key is kept
+// server-side and the browser only receives a proxy URL.
+// Do not deploy this file publicly.
+var DBP_CONFIG = { usdaProxy: null }; // USDA fallback disabled in local test
+
+// To enable USDA fallback in local testing, uncomment the line below
+// and replace with a temporary test key. Never commit a live key here.
+// var DBP_CONFIG = { usdaProxy: 'https://api.nal.usda.gov/fdc/v1/foods/search?api_key=YOUR_KEY_HERE&' };
 </script>
 <script>
 /* ================================================================
@@ -363,9 +370,8 @@ var DBP_CONFIG = { usdaKey: 'Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS' };
 (function () {
   'use strict';
 
-  const FINELI  = 'https://fineli.fi/fineli/api/v1';
-  const USDA    = 'https://api.nal.usda.gov/fdc/v1';
-  const USDA_KEY = (typeof DBP_CONFIG !== 'undefined') ? DBP_CONFIG.usdaKey : '';
+  const FINELI     = 'https://fineli.fi/fineli/api/v1';
+  const USDA_PROXY = (typeof DBP_CONFIG !== 'undefined') ? DBP_CONFIG.usdaProxy : null;
 
   const MACROS = [
     { code: 'ENERC',  label: 'Energia',        unit: 'kcal', decimals: 0 },
@@ -662,9 +668,9 @@ var DBP_CONFIG = { usdaKey: 'Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS' };
   }
 
   async function tryUsdaFallback(query) {
-    if (!USDA_KEY) { alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.'); return; }
+    if (!USDA_PROXY) { alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.'); return; }
     try {
-      const res  = await fetch(`${USDA}/foods/search?query=${encodeURIComponent(query)}&pageSize=1&api_key=${USDA_KEY}`);
+      const res  = await fetch(`${USDA_PROXY}?query=${encodeURIComponent(query)}`);
       const data = await res.json();
       const food = data.foods?.[0];
       if (!food) throw new Error('not found');
