@@ -52,6 +52,13 @@ add_action( 'rest_api_init', function () {
         ],
     ] );
 
+    // USDA: single food detail — returns full nutrient profile including amino acids
+    register_rest_route( 'dbp/v1', '/usda/food/(?P<fdcId>\d+)', [
+        'methods'             => 'GET',
+        'callback'            => 'dbp_usda_food_proxy',
+        'permission_callback' => '__return_true',
+    ] );
+
 } );
 
 function dbp_fineli_search_proxy( WP_REST_Request $request ) {
@@ -75,6 +82,20 @@ function dbp_fineli_food_proxy( WP_REST_Request $request ) {
     $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
     if ( is_wp_error( $response ) ) {
         return new WP_Error( 'fineli_error', 'Fineli request failed', [ 'status' => 502 ] );
+    }
+    return rest_ensure_response( json_decode( wp_remote_retrieve_body( $response ) ) );
+}
+
+function dbp_usda_food_proxy( WP_REST_Request $request ) {
+    $fdc_id = absint( $request->get_param( 'fdcId' ) );
+    $url    = add_query_arg(
+        [ 'api_key' => DBP_USDA_KEY ],
+        "https://api.nal.usda.gov/fdc/v1/food/{$fdc_id}"
+    );
+
+    $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
+    if ( is_wp_error( $response ) ) {
+        return new WP_Error( 'usda_error', 'USDA request failed', [ 'status' => 502 ] );
     }
     return rest_ensure_response( json_decode( wp_remote_retrieve_body( $response ) ) );
 }
@@ -112,6 +133,7 @@ function dbp_shortcode() {
         'fineliSearch' => rest_url( 'dbp/v1/fineli/search' ),
         'fineliFood'   => rest_url( 'dbp/v1/fineli/food' ),
         'usdaProxy'    => rest_url( 'dbp/v1/usda' ),
+        'usdaDetail'   => rest_url( 'dbp/v1/usda/food' ),
     ] );
 
     ob_start();

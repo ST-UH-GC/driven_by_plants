@@ -356,11 +356,15 @@ body { background: #f4f6f4; margin: 0; padding: 0; }
 // LOCAL TESTING ONLY — API key is intentionally visible here for development.
 // In the real WordPress plugin all API calls are proxied server-side.
 // Do not deploy this file publicly.
-const _USDA = 'https://api.nal.usda.gov/fdc/v1/foods/search?api_key=Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS&query=';
+const _USDA_KEY = 'Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS';
+// Fineli is a public REST API — direct browser access works when CORS headers are present.
+// If CORS blocks it, the app falls back automatically to USDA with Finnish→English translation.
 var DBP_CONFIG = {
-  fineliSearch: null,        // no server proxy in local test — falls back to USDA
-  fineliFood:   null,
-  usdaProxy:    _USDA,       // USDA called directly from browser for testing
+  fineliSearch: 'https://fineli.fi/fineli/api/v1/foods',
+  fineliFood:   'https://fineli.fi/fineli/api/v1/foods',
+  usdaProxy:    `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${_USDA_KEY}&query=`,
+  usdaDetail:   'https://api.nal.usda.gov/fdc/v1/food/',
+  usdaKey:      _USDA_KEY,
 };
 </script>
 <script>
@@ -375,6 +379,8 @@ var DBP_CONFIG = {
   const PROXY_FINELI_SEARCH = CFG.fineliSearch || null;
   const PROXY_FINELI_FOOD   = CFG.fineliFood   || null;
   const PROXY_USDA          = CFG.usdaProxy    || null;
+  const PROXY_USDA_DETAIL   = CFG.usdaDetail   || null;
+  const USDA_KEY            = CFG.usdaKey      || null;
 
   const MACROS = [
     { code: 'ENERC',  label: 'Energia',        unit: 'kcal', decimals: 0 },
@@ -456,26 +462,45 @@ var DBP_CONFIG = {
     return 'low';
   }
 
+  async function translateToEnglish(text) {
+    try {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=fi|en`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      const t    = data?.responseData?.translatedText;
+      if (t && t.toLowerCase() !== text.toLowerCase()) return t;
+    } catch (_) {}
+    return text;
+  }
+
   async function fineliSearch(query) {
     if (!PROXY_FINELI_SEARCH) throw new Error('no proxy');
-    const res = await fetch(`${PROXY_FINELI_SEARCH}?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`${PROXY_FINELI_SEARCH}?q=${encodeURIComponent(query)}&lang=fi&size=15`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
 
   async function fineliFood(id) {
     if (!PROXY_FINELI_FOOD) throw new Error('no proxy');
-    const res = await fetch(`${PROXY_FINELI_FOOD}/${id}`);
+    const res = await fetch(`${PROXY_FINELI_FOOD}/${id}?lang=fi`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
 
+  const USDA_PREFERRED = ['SR Legacy', 'Foundation', 'Survey (FNDDS)'];
+
   async function usdaSearch(query) {
     if (!PROXY_USDA) throw new Error('no proxy');
+    // PROXY_USDA in test.html already contains ?api_key=...&query=
     const res  = await fetch(`${PROXY_USDA}${encodeURIComponent(query)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return (data.foods || []).map(f => ({
+    const foods = (data.foods || []).slice().sort((a, b) => {
+      const ap = USDA_PREFERRED.includes(a.dataType) ? 0 : 1;
+      const bp = USDA_PREFERRED.includes(b.dataType) ? 0 : 1;
+      return ap - bp;
+    });
+    return foods.map(f => ({
       id:        `usda:${f.fdcId}`,
       name:      { fi: f.description, en: f.description },
       foodClass: { nameFi: f.dataType || '' },
@@ -691,14 +716,20 @@ var DBP_CONFIG = {
     $('dbp-meal-list').appendChild(placeholder);
 
     if (String(id).startsWith('usda:')) {
-      // Item came from USDA search — nutrients already in the search result
-      // Re-fetch by querying the id to get full nutrient detail
+      const fdcId = String(id).replace('usda:', '');
       try {
-        const res  = await fetch(`${PROXY_USDA}${encodeURIComponent(String(id).replace('usda:',''))}`);
+        // Use detail endpoint for full nutrient data (includes amino acids)
+        const keyParam   = USDA_KEY ? `?api_key=${USDA_KEY}` : '';
+        const detailUrl  = PROXY_USDA_DETAIL
+          ? `${PROXY_USDA_DETAIL}${fdcId}${keyParam}`
+          : `${PROXY_USDA}${encodeURIComponent(fdcId)}`;
+        const res  = await fetch(detailUrl);
         const data = await res.json();
-        const food = data.foods?.[0];
+        // Detail endpoint returns { foodNutrients: [...] }
+        // Search endpoint returns { foods: [{ foodNutrients: [...] }] }
+        const nutrients = data.foodNutrients || data.foods?.[0]?.foodNutrients;
         placeholder.remove();
-        showAddForm({ id, name, rawNutrients: extractUsdaNutrients(food?.foodNutrients) });
+        showAddForm({ id, name, rawNutrients: extractUsdaNutrients(nutrients) });
       } catch {
         placeholder.remove();
         alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.');
@@ -720,11 +751,16 @@ var DBP_CONFIG = {
   async function tryUsdaFallback(query) {
     if (!PROXY_USDA) { alert('Ruoka-aineen tiedot eivät saatavilla juuri nyt.'); return; }
     try {
-      const res  = await fetch(`${PROXY_USDA}${encodeURIComponent(query)}`);
+      const eq   = await translateToEnglish(query);
+      const res  = await fetch(`${PROXY_USDA}${encodeURIComponent(eq)}`);
       const data = await res.json();
-      const food = data.foods?.[0];
+      const food = (data.foods || []).find(f => USDA_PREFERRED.includes(f.dataType)) || data.foods?.[0];
       if (!food) throw new Error('not found');
-      showAddForm({ id: `usda:${food.fdcId}`, name: food.description, rawNutrients: extractUsdaNutrients(food.foodNutrients) });
+      // Fetch full nutrients via detail endpoint
+      const keyParam  = USDA_KEY ? `?api_key=${USDA_KEY}` : '';
+      const detailRes = await fetch(`${PROXY_USDA_DETAIL}${food.fdcId}${keyParam}`);
+      const detail    = await detailRes.json();
+      showAddForm({ id: `usda:${food.fdcId}`, name: food.description, rawNutrients: extractUsdaNutrients(detail.foodNutrients || food.foodNutrients) });
     } catch {
       alert('Ruoka-ainetta ei löydy tällä hetkellä. Kokeile toista hakusanaa.');
     }
@@ -755,12 +791,14 @@ var DBP_CONFIG = {
         showResults('<div class="dbp-search-loading"><span class="dbp-spinner"></span>Haetaan&hellip;</div>');
         fineliSearch(q)
           .then(renderSearchResults)
-          .catch(() => usdaSearch(q)
-            .then(renderSearchResults)
-            .catch(() => {
-              showResults('<div class="dbp-search-error">Haku epäonnistui. Tarkista verkkoyhteytesi.</div>');
-            })
-          );
+          .catch(async () => {
+            const eq = await translateToEnglish(q);
+            return usdaSearch(eq)
+              .then(renderSearchResults)
+              .catch(() => {
+                showResults('<div class="dbp-search-error">Haku epäonnistui. Tarkista verkkoyhteytesi.</div>');
+              });
+          });
       }, 320);
     });
 
