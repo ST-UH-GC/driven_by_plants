@@ -359,10 +359,12 @@ body { background: #f4f6f4; margin: 0; padding: 0; }
 const _USDA_KEY = 'Zf5cxCvUWHjXDHuggtvVms2GbBcv08Ln5yx4zrAS';
 // Fineli is a public REST API — direct browser access works when CORS headers are present.
 // If CORS blocks it, the app falls back automatically to USDA with Finnish→English translation.
+// USDA search restricted to SR Legacy + Foundation + Survey — these have full amino acid data
+// and descriptive names. Branded foods show duplicate names (e.g. 12× "TOFU") and no aminos.
 var DBP_CONFIG = {
   fineliSearch: 'https://fineli.fi/fineli/api/v1/foods',
   fineliFood:   'https://fineli.fi/fineli/api/v1/foods',
-  usdaProxy:    `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${_USDA_KEY}&query=`,
+  usdaProxy:    `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${_USDA_KEY}&dataType=SR%20Legacy,Foundation,Survey%20(FNDDS)&query=`,
   usdaDetail:   'https://api.nal.usda.gov/fdc/v1/food/',
   usdaKey:      _USDA_KEY,
 };
@@ -462,13 +464,59 @@ var DBP_CONFIG = {
     return 'low';
   }
 
+  const FI_EN = {
+    'herne':'peas','herneet':'peas','papu':'bean','pavut':'beans',
+    'linssit':'lentils','linssi':'lentil',
+    'kikherneet':'chickpeas','kikherneissä':'chickpeas',
+    'tofu':'tofu','tempeh':'tempeh','seitan':'seitan',
+    'soija':'soy','soijapavut':'soybeans','edamame':'edamame',
+    'kaura':'oats','kaurahiutaleet':'oats',
+    'riisi':'rice','täysjyvä':'whole grain','täysjyväriisi':'brown rice',
+    'vehnä':'wheat','ohra':'barley','ruis':'rye','maissi':'corn',
+    'tattari':'buckwheat','hirssi':'millet','kvinoa':'quinoa','quinoa':'quinoa',
+    'amarantti':'amaranth','durra':'sorghum',
+    'pinaatti':'spinach','lehtikaali':'kale','parsakaali':'broccoli',
+    'kukkakaali':'cauliflower','kaali':'cabbage','ruusukaali':'brussels sprouts',
+    'porkkana':'carrot','peruna':'potato','bataatti':'sweet potato',
+    'punajuuri':'beet','nauris':'turnip','palsternakka':'parsnip',
+    'tomaatti':'tomato','kurkku':'cucumber','paprika':'bell pepper',
+    'sipuli':'onion','punasipuli':'red onion','valkosipuli':'garlic',
+    'kesäkurpitsa':'zucchini','kurpitsa':'pumpkin','squash':'squash',
+    'sieni':'mushroom','sienet':'mushrooms',
+    'salaatti':'lettuce','rucola':'arugula',
+    'avokado':'avocado','banaani':'banana','omena':'apple','päärynä':'pear',
+    'mansikka':'strawberry','mustikka':'blueberry','vadelma':'raspberry',
+    'appelsiini':'orange','sitruuna':'lemon','mango':'mango',
+    'ananas':'pineapple','kiivi':'kiwi','papaya':'papaya',
+    'taateli':'date','taatelit':'dates','rusina':'raisin','rusinat':'raisins',
+    'manteli':'almond','mantelit':'almonds',
+    'cashew':'cashew','cashewpähkinä':'cashew','cashewpähkinät':'cashews',
+    'maapähkinä':'peanut','maapähkinät':'peanuts',
+    'saksanpähkinä':'walnut','saksanpähkinät':'walnuts',
+    'parapähkinä':'brazil nut','parapähkinät':'brazil nuts',
+    'hasselpähkinä':'hazelnut','pähkinät':'nuts',
+    'kurpitsansiemen':'pumpkin seed','kurpitsansiemenet':'pumpkin seeds',
+    'auringonkukansiemen':'sunflower seed','auringonkukansiemenet':'sunflower seeds',
+    'seesaminsiemen':'sesame seed','seesaminsiemenet':'sesame seeds',
+    'pellavansiemen':'flaxseed','pellavansiemenet':'flaxseeds',
+    'chiansiemen':'chia seed','chiansiemenet':'chia seeds',
+    'hampunsiemen':'hemp seed','hampunsiemenet':'hemp seeds',
+    'ravintohiiva':'nutritional yeast',
+    'tahini':'tahini','hummus':'hummus',
+    'kookosmaito':'coconut milk','kookosöljy':'coconut oil',
+    'oliiviöljy':'olive oil','rypsiöljy':'canola oil',
+    'soijajuoma':'soy milk','kaurajuoma':'oat milk','mantelijuoma':'almond milk',
+  };
+
   async function translateToEnglish(text) {
+    const lower = text.trim().toLowerCase();
+    if (FI_EN[lower]) return FI_EN[lower];
     try {
       const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=fi|en`;
       const res  = await fetch(url);
       const data = await res.json();
       const t    = data?.responseData?.translatedText;
-      if (t && t.toLowerCase() !== text.toLowerCase()) return t;
+      if (t && t.toLowerCase() !== lower) return t;
     } catch (_) {}
     return text;
   }

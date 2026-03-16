@@ -103,17 +103,68 @@
   }
 
   /* ── TRANSLATION (Finnish → English for USDA fallback) ───────── */
+
+  // Built-in dictionary for common Finnish food terms — fast, offline, no API needed.
+  const FI_EN = {
+    'herne':'peas','herneet':'peas','papu':'bean','pavut':'beans',
+    'linssit':'lentils','linssi':'lentil',
+    'kikherneet':'chickpeas','kikherneissä':'chickpeas',
+    'tofu':'tofu','tempeh':'tempeh','seitan':'seitan',
+    'soija':'soy','soijapavut':'soybeans','edamame':'edamame',
+    'kaura':'oats','kaurahiutaleet':'oats',
+    'riisi':'rice','täysjyvä':'whole grain','täysjyväriisi':'brown rice',
+    'vehnä':'wheat','ohra':'barley','ruis':'rye','maissi':'corn',
+    'tattari':'buckwheat','hirssi':'millet','kvinoa':'quinoa','quinoa':'quinoa',
+    'amarantti':'amaranth','durra':'sorghum',
+    'pinaatti':'spinach','lehtikaali':'kale','parsakaali':'broccoli',
+    'kukkakaali':'cauliflower','kaali':'cabbage','ruusukaali':'brussels sprouts',
+    'porkkana':'carrot','peruna':'potato','bataatti':'sweet potato',
+    'punajuuri':'beet','nauris':'turnip','palsternakka':'parsnip',
+    'tomaatti':'tomato','kurkku':'cucumber','paprika':'bell pepper',
+    'sipuli':'onion','punasipuli':'red onion','valkosipuli':'garlic',
+    'kesäkurpitsa':'zucchini','kurpitsa':'pumpkin','squash':'squash',
+    'sieni':'mushroom','sienet':'mushrooms',
+    'salaatti':'lettuce','rucola':'arugula','piparjuuri':'horseradish',
+    'avokado':'avocado','banaani':'banana','omena':'apple','päärynä':'pear',
+    'mansikka':'strawberry','mustikka':'blueberry','vadelma':'raspberry',
+    'appelsiini':'orange','sitruuna':'lemon','lime':'lime',
+    'mango':'mango','ananas':'pineapple','kiivi':'kiwi','papaya':'papaya',
+    'taateli':'date','taatelit':'dates','rusina':'raisin','rusinat':'raisins',
+    'manteli':'almond','mantelit':'almonds',
+    'cashew':'cashew','cashewpähkinä':'cashew','cashewpähkinät':'cashews',
+    'maapähkinä':'peanut','maapähkinät':'peanuts',
+    'saksanpähkinä':'walnut','saksanpähkinät':'walnuts',
+    'parapähkinä':'brazil nut','parapähkinät':'brazil nuts',
+    'hasselpähkinä':'hazelnut','pähkinät':'nuts',
+    'kurpitsansiemen':'pumpkin seed','kurpitsansiemenet':'pumpkin seeds',
+    'auringonkukansiemen':'sunflower seed','auringonkukansiemenet':'sunflower seeds',
+    'seesaminsiemen':'sesame seed','seesaminsiemenet':'sesame seeds',
+    'pellavansiemen':'flaxseed','pellavansiemenet':'flaxseeds',
+    'chiansiemen':'chia seed','chiansiemenet':'chia seeds',
+    'hampunsiemen':'hemp seed','hampunsiemenet':'hemp seeds',
+    'ravintohiiva':'nutritional yeast',
+    'tahini':'tahini','hummus':'hummus',
+    'kookosmaito':'coconut milk','kookosöljy':'coconut oil',
+    'oliiviöljy':'olive oil','rypsiöljy':'canola oil',
+    'soijajuoma':'soy milk','kaurajuoma':'oat milk',
+    'mantelijuoma':'almond milk',
+  };
+
   /**
-   * Translate a search term to English using the free MyMemory API.
-   * Falls back to the original string on any error.
+   * Translate a Finnish food term to English.
+   * Checks the built-in dictionary first (instant, works offline/file://).
+   * Falls back to MyMemory API for unknown terms.
    */
   async function translateToEnglish(text) {
+    const lower = text.trim().toLowerCase();
+    if (FI_EN[lower]) return FI_EN[lower];
+    // Try MyMemory for terms not in the dictionary
     try {
       const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=fi|en`;
       const res  = await fetch(url);
       const data = await res.json();
       const t    = data?.responseData?.translatedText;
-      if (t && t.toLowerCase() !== text.toLowerCase()) return t;
+      if (t && t.toLowerCase() !== lower) return t;
     } catch (_) { /* network error — use original */ }
     return text;
   }

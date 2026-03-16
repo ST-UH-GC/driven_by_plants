@@ -104,6 +104,11 @@ function dbp_usda_proxy( WP_REST_Request $request ) {
     $url = add_query_arg( [
         'query'    => $request->get_param( 'query' ),
         'pageSize' => 12,
+        // Restrict to comprehensive databases that include amino acid data.
+        // SR Legacy and Foundation foods have full nutrient profiles.
+        // Branded foods are excluded — they rarely have amino acid data and
+        // show duplicate names (e.g. 12 entries all called "TOFU").
+        'dataType' => 'SR Legacy,Foundation,Survey (FNDDS)',
         'api_key'  => DBP_USDA_KEY,
     ], 'https://api.nal.usda.gov/fdc/v1/foods/search' );
 
